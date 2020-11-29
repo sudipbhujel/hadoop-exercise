@@ -1,0 +1,322 @@
+Note: 
+1. text appeared after '$' sign is linux command when normal user is active
+2. text appeared after '#' sign is linux command when root user is active
+
+
+Install openshh if not already using
+$sudo apt-get install openssh-client openssh-server
+
+
+*******Create User and User Group**********
+
+Open command Terminal (Ctrl + Alt + T)
+1. Login as root
+$ sudo su
+
+if password is asked?
+$ enter password: password_for_current_user
+
+Now, the command
+# whoami
+should return
+root
+
+
+
+2. Add the group
+# addgroup hadoop
+
+To delete group. 
+# delgroup
+
+3. Create user hduser
+# adduser hduser
+
+To delete user
+# deluser hduser
+
+
+Enter new UNIX password: hadoop
+Retype new UNIX password: hadoop
+press enter for the default values.
+Is the information correct? Y
+
+
+
+4. Add hduser in hadoop group
+# adduser hduser hadoop
+
+
+
+5. Add hduser to sudoers list so that hduser can do admin task. For this enter following command.
+# visudo
+
+
+a. Add following line under '# Allow member of group sudo to execute any command'
+
+hduser ALL=(ALL) ALL
+
+b. press ctrl+x then Y
+
+
+
+6. Logout and login as hduser
+# exit
+$ sudo su hduser
+
+
+
+
+***********HADOOP INSTALLATION*************
+
+Do everything below this with user 'hduser'
+
+1. Download hadoop from trusted site (https://www.hadoop.apache.org)
+
+download hadoop-x.y.z.tar.gz
+For now, hadoop-2.9.2.tar.gz
+(visit https://www.apache.org/dyn/closer.cgi/hadoop/common/hadoop-2.9.2/hadoop-2.9.2.tar.gz)
+
+
+
+2. copy hadoop-x.y.z-src.tar.gz from /home/[your_username]/Downloads (~/Downloads) to /usr/local/
+Open command Terminal (Ctrl + Alt + T) and enter following command
+$ sudo cp ~/Downloads/hadoop-x.y.z-src.tar.gz /usr/local/
+
+
+
+3. Goto /usr/local
+$ cd /usr/local
+
+
+
+4. untar the hadoop-2.9.2.tar.gz file
+$ sudo tar -xvf hadoop-2.9.2.tar.gz
+
+
+
+5. hadoop-2.9.2.tar.gz in /usr/local is no more required, so remove it
+$ sudo rm hadoop-2.9.2.tar.gz
+
+
+
+6. Linkname hadoop-2.9.2 with symbol hadoop (similar to creating shortcut in windows)
+$ sudo ln -s hadoop-2.9.2 hadoop
+
+7. See the permission of hadoop-2.9.2 and Change owner of hadoop-2.9.2 to user=hduser and usergroup=hadoop, again see the permission
+$ ls -l hadoop-2.9.2
+$ sudo chown -R hduser:hadoop hadoop-2.9.2
+$ ls -l hadoop-2.9.2
+
+
+
+8. Change permission: give read-write-execute permission
+$ sudo chmod 777 hadoop-2.9.2
+
+
+
+9. Edit hadoop-env.sh and configure Java
+Enter 'readlink -f $(which java)' command to show the jdk location
+
+Should return like this
+/usr/lib/jvm/java-8-openjdk-amd64/bin/java
+
+If you have installed manually on /usr/local directory, jdk location is /usr/local/java.jdk1.8.0_131
+For most cases, sdk location will be /usr/lib/jvm/[your_jdk_version]
+
+Use this path (/usr/lib/jvm/[your_jdk_version]) to replace [JAVA_HOME] in below export statement.
+
+$ cd /usr/local/hadoop/etc/hadoop/
+
+
+$ sudo nano hadoop-env.sh
+
+add the following lines in hadoop-env.sh file just below the line '# The java implementation to use'(if not exist already)
+export JAVA_HOME=${JAVA_HOME}
+
+At the end, append the following line
+export HADOOP_OPTS=-Djava.net.preferIPV4Stack=true
+export HADOOP_HOME_WARN_SUPPRESS="TRUE"
+export JAVA_HOME=[JAVA_HOME]
+
+
+
+10. Update $HOME/.bashrc
+$ sudo nano ~/.bashrc
+Note: be careful while adding these lines
+
+At the end, add the following lines
+# Set Hadoop-related environment variables
+export HADOOP_HOME=/usr/local/hadoop
+export HADOOP_PREFIX=/usr/local/hadoop
+export HADOOP_MAPRED_HOME=${HADOOP_HOME}
+export HADOOP_COMMON_HOME=${HADOOP_HOME}
+export HADOOP_HDFS_HOME=${HADOOP_HOME}
+export HADOOP_YARN_HOME=${HADOOP_HOME}
+export HADOOP_CONF_DIR=${HADOOP_HOME}/etc/hadoop
+
+# Native Path
+export HADOOP_COMMON_LIB_NATIVE_DIR=${HADOOP_PREFIX}/lib/native
+export HADOOP_OPTS=".Djava.library.path=$HADOOP_PREFIX/lib"
+
+# Set JAVA_HOME
+export JAVA_HOME=[JAVA_HOME]
+
+# Some convenient aliases and functions for running Hadoop-related commands
+unaliasfs&> /dev/null
+aliasfs="hadoop fs"
+unaliashls&> /dev/null
+aliashls="fs -ls"
+
+# If you have LZO copression enabled in your hadoop cluster and compress jod
+# outpurs with LZOP (not covered here): Conveniently inspect an LZOP compressed
+# from the command line, run via:
+# $ lzohead /hdfs/path/to/lzop/compressed/file.lzo
+# Requires installed 'lzop' command.
+# lzohead () {hadoopfs -cat $1 | lzop -dc head -1000 | less }
+
+# Add Hadoop bin/ directory to Path
+export PATH=$PATH:$HADOOP_HOME/bin:$PATH:$JAVA_HOME/bin:$HADOOP_HOME/sbin
+
+
+
+11. reload ~/.bashrc file
+$ source ~/.bashrc
+
+
+
+12. Create temporary directry which wiil be used as base location for DFS
+make parent/base directory
+$ sudo mkdir -p /app/hadoop/tmp
+
+change owner
+$ sudo chown -R hduser:hadoop /app/hadoop/tmp
+
+change permission
+$ sudo chmod -R 777 /app/hadoop/tmp
+
+
+
+13. Update yarn-site.xml
+$ sudo nano /usr/local/hadoop/etc/hadoop/yarn-site.xml
+
+add the following properies inside <configuration> and </configuration>
+
+<property>
+    <name>yarn.nodemanager.aux-services</name>
+    <value>mapreduce_shuffle</value>
+</property>
+<property>
+    <name>yarn.nodemanager.aux-services.mapreduce.shuffle.class</name>
+    <value>org.apache.hadoop.mapred.ShuffleHandler</value>
+</property>
+
+
+
+14. UPDATE core-site.xml
+$ sudo nano /usr/local/hadoop/etc/hadoop/core-site.xml
+
+add the following properies inside <configuration> and </configuration>
+
+<property>
+    <name>hadoop.tmp.dir</name>
+    <value>/app/hadoop/tmp</value>
+    <description>A base for other temporary directories.</description>
+</property>
+
+<property>
+    <name>fs.default.name</name>
+    <value>hdfs://localhost:9000</value>
+    <description>The file name of default file system. A URI whose scheme and authority determine the File System implementation.</description>
+</property>
+
+
+
+15. UPDATE mapred-site.xml
+create first from template 
+$ sudo cp /usr/local/hadoop/etc/hadoop/mapred-site.xml.template /usr/local/hadoop/etc/hadoop/mapred-site.xml
+$ sudo nano /usr/local/hadoop/etc/hadoop/mapred-site.xml
+
+add the following properies <configuration> and </configuration>
+
+<property>
+     <name>mapreduce.framework.name</name> 
+     <value>yarn</value> 
+</property>
+<property>
+    <name>mapreduce.jobhistory.address</name>
+    <value>localhost:10020</value>
+</property>
+
+
+
+16. CREATE directry where hadoop will store its work and give good permission to it. Also change the owner of those two directories to hduser:hadoop UserName:groupName
+$ sudo mkdir -p /usr/local/hadoop/yarn_data/hdfs/namenode
+$ sudo mkdir -p /usr/local/hadoop/yarn_data/hdfs/datanode
+$ sudo chmod 777 /usr/local/hadoop/yarn_data/hdfs/namenode
+$ sudo chmod 777 /usr/local/hadoop/yarn_data/hdfs/datanode
+$ sudo chown -R hduser:hadoop /usr/local/hadoop/yarn_data/hdfs/namenode
+$ sudo chown -R hduser:hadoop /usr/local/hadoop/yarn_data/hdfs/datanode
+
+
+
+17. Update hdfs-site.xml file
+$ sudo nano /usr/local/hadoop/etc/hadoop/hdfs-site.xml
+
+add the following properies <configuration> and </configuration>
+
+<property>
+    <name>dfs.replication</name>
+    <value>1</value>
+</property>
+<property>
+    <name>dfs.namenode.name.dir</name>
+    <value>file:/usr/local/hadoop/yarn_data/hdfs/namenode</value>
+</property>
+<property>
+    <name>dfs.datanode.data.dir</name>
+    <value>file:/usr/local/hadoop/yarn_data/hdfs/datanode</value>
+</property>
+
+
+???????????????????????
+18. FORMAT YOUR NAMENODE
+$ hadoop namenode -format
+
+
+
+19. STARTTING SINGLE NODE CLUSTER
+$ start-dfs.sh
+$ jps
+$ start-yarn.sh
+
+
+Now open your browser and visit http://localhost:50070 to see the installed NameNode
+
+-----Steps for Assignment Ends------
+
+
+
+######Extra Steps############ 
+(to start job history daemon run '$ mr-jobhistory-daemon.sh start historyserver')
+can be browsed historyserver at localhost:19888
+
+http://localhost:19888 for MapReduce Job History
+
+cat /usr/local/hadoop/logs/hadoop-hduser-namenode-ubuntu.log 
+for the monitoring log
+
+Check if the home folder is created or not
+hadoop fs -ls
+
+17/05/27 12:21:32 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+ls: `.': No such file or directory
+
+If you get the above error: that means your hadoop home directory was not created successfully
+
+use below command
+$ hadoop fs -mkdir -p /user/hduser (This is deprecated)
+$ hdfs dfs -mkdir -p /user/hduser (So, use this)
+
+check with below command again, this should not give any error
+hdfs dfs -ls

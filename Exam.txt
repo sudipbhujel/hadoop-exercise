@@ -1,0 +1,18 @@
+Problem 1:
+Count the frequency of words in a given plain text file using hadoop framework.
+
+
+Problem 2:
+Display the Sum and count of odd and even numbers separately from the given input file.
+
+
+Problem 3:
+Analyzing weather data of Merced, California, US to find cold and hot days from the given raw input data.
+
+
+Problem 4:
+Find the average/mean age of male and female died in titanic disaster.
+
+
+Note:
+You need to submit (problem-wise) the screenshot command terminal showing the result and a output file.
