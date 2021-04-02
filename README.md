@@ -1,3 +1,3 @@
 # hadoop-exercise
 
-Checkout `main` branch.
+Checkout `master` branch.
